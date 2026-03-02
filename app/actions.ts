@@ -14,10 +14,10 @@ export async function getStats() {
     const data = await getSheetData(SPREADSHEET_ID, 'A:C');
     if (!data || data.length === 0) return { total: 0, sent: 0, failed: 0 };
 
-    const rows = data.slice(1); 
+    const rows = data.slice(1).filter((row: any[]) => row[0]); // Only count rows with a phone number
     const total = rows.length;
-    const sent = rows.filter(row => row[2] === 'تم الارسال').length;
-    const failed = rows.filter(row => row[2] === 'فشل الارسال').length;
+    const sent = rows.filter((row: any[]) => row[2] === 'تم الارسال').length;
+    const failed = rows.filter((row: any[]) => row[2] === 'فشل الارسال').length;
 
     return { total, sent, failed };
   } catch (error) {
