@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  LayoutDashboard, 
   Send, 
   CheckCircle2, 
   XCircle, 
@@ -15,7 +14,8 @@ import {
   AlertCircle,
   PauseCircle,
   Activity,
-  Droplet
+  FileText,
+  Smartphone
 } from 'lucide-react';
 import { verifyPassword, getStats } from '@/app/actions';
 
@@ -115,16 +115,22 @@ export default function Dashboard() {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-4 font-sans" dir="rtl">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans relative overflow-hidden" dir="rtl">
+        {/* Decorative Background */}
+        <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-[#8ED257] rounded-full mix-blend-multiply filter blur-[150px] opacity-20 animate-pulse"></div>
+        <div className="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] bg-[#4A8522] rounded-full mix-blend-multiply filter blur-[150px] opacity-10"></div>
+        
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-8 rounded-3xl shadow-xl max-w-md w-full border border-gray-100"
+          className="bg-white/80 backdrop-blur-xl p-10 rounded-3xl shadow-2xl max-w-md w-full border border-white/50 relative z-10"
         >
-          <div className="flex flex-col items-center mb-8">
-            <PetrotradeLogo className="w-24 h-24 mb-4 drop-shadow-md" />
-            <h1 className="text-2xl font-bold text-[#1A1A1A] tracking-tight">بتروتريد</h1>
-            <p className="text-gray-500 text-sm mt-2 font-medium">نظام الإخطارات القانونية الذكي</p>
+          <div className="flex flex-col items-center mb-10">
+            <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center mb-6 shadow-sm border border-slate-100">
+              <PetrotradeLogo className="w-12 h-12" />
+            </div>
+            <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">بتروتريد</h1>
+            <p className="text-slate-600 text-sm font-bold bg-slate-100 px-4 py-1.5 rounded-full mt-2 border border-slate-200">نظام الإخطارات القانونية الذكي</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
@@ -134,7 +140,7 @@ export default function Dashboard() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="كلمة المرور"
-                className="w-full px-6 py-4 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#7AC142] focus:border-transparent transition-all text-center text-lg"
+                className="w-full px-6 py-4 rounded-xl border border-slate-200 bg-white/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#5A9E2B] focus:border-transparent transition-all text-center text-lg shadow-inner"
                 required
               />
             </div>
@@ -142,16 +148,16 @@ export default function Dashboard() {
               <motion.p 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="text-red-500 text-sm text-center flex items-center justify-center gap-2 bg-red-50 py-2 rounded-lg"
+                className="text-red-600 text-sm font-bold text-center flex items-center justify-center gap-2 bg-red-50 py-3 rounded-xl border border-red-100"
               >
-                <AlertCircle size={16} />
+                <AlertCircle size={18} />
                 {error}
               </motion.p>
             )}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#1A1A1A] text-white py-4 rounded-xl font-bold hover:bg-black transition-all shadow-md disabled:opacity-50 flex items-center justify-center gap-2 text-lg"
+              className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 disabled:opacity-50 flex items-center justify-center gap-2 text-lg"
             >
               {loading ? <Loader2 className="animate-spin" /> : 'تسجيل الدخول'}
             </button>
@@ -162,80 +168,91 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] font-sans text-[#1A1A1A]" dir="rtl">
-      <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900" dir="rtl">
+      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-8 py-4 flex items-center justify-between sticky top-0 z-30 shadow-sm">
         <div className="flex items-center gap-4">
-          <PetrotradeLogo className="w-12 h-12" />
+          <div className="w-12 h-12 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100 shadow-sm">
+            <PetrotradeLogo className="w-7 h-7" />
+          </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight">بتروتريد</h1>
-            <p className="text-xs text-gray-500 font-medium">نظام الإخطارات القانونية الذكي</p>
+            <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">بتروتريد</h1>
+            <p className="text-xs text-slate-500 font-bold">نظام الإخطارات القانونية الذكي</p>
           </div>
         </div>
         <button 
           onClick={() => setIsAuthenticated(false)}
-          className="flex items-center gap-2 px-4 py-2 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors text-gray-500 font-medium text-sm"
+          className="flex items-center gap-2 px-4 py-2 hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors text-slate-500 font-bold text-sm border border-transparent hover:border-red-100"
         >
           <LogOut size={18} />
           <span>تسجيل خروج</span>
         </button>
       </header>
 
-      <main className="max-w-7xl mx-auto p-8 space-y-8">
+      <main className="max-w-7xl mx-auto p-8 space-y-8 relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <StatCard 
             title="إجمالي الأرقام المستهدفة" 
             value={stats.total} 
-            icon={<Users className="text-[#1A1A1A]" />} 
-            color="bg-gray-100"
-            borderColor="border-gray-200"
+            icon={<Users className="text-slate-700 w-7 h-7" />} 
+            color="bg-slate-100"
+            borderColor="border-slate-200"
+            textColor="text-slate-800"
           />
           <StatCard 
             title="تم الإرسال بنجاح" 
             value={stats.sent} 
-            icon={<CheckCircle2 className="text-[#7AC142]" />} 
+            icon={<CheckCircle2 className="text-[#5A9E2B] w-7 h-7" />} 
             color="bg-[#f2f9ec]"
             borderColor="border-[#d7eec5]"
+            textColor="text-[#4A8522]"
           />
           <StatCard 
             title="فشل الإرسال" 
             value={stats.failed} 
-            icon={<XCircle className="text-red-600" />} 
+            icon={<XCircle className="text-red-600 w-7 h-7" />} 
             color="bg-red-50"
             borderColor="border-red-100"
+            textColor="text-red-700"
           />
         </div>
 
         {/* Progress Bar */}
-        <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-bold text-gray-700">تقدم الحملة</span>
-            <span className="text-sm font-bold text-[#7AC142]">{progress}%</span>
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden">
+          <div className="flex justify-between items-center mb-3">
+            <span className="text-sm font-bold text-slate-700 flex items-center gap-2">
+              <Activity className="w-4 h-4 text-[#5A9E2B]" />
+              تقدم الحملة
+            </span>
+            <span className="text-sm font-bold text-[#4A8522] bg-[#f2f9ec] px-3 py-1 rounded-full border border-[#d7eec5]">{progress}%</span>
           </div>
-          <div className="w-full bg-gray-100 rounded-full h-4 overflow-hidden">
+          <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden shadow-inner">
             <motion.div 
-              className="bg-[#7AC142] h-4 rounded-full" 
+              className="bg-gradient-to-r from-[#5A9E2B] to-[#8ED257] h-3 rounded-full relative" 
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
               transition={{ duration: 0.5 }}
-            />
+            >
+              <div className="absolute top-0 left-0 right-0 bottom-0 bg-white/20 animate-[pulse_2s_infinite]"></div>
+            </motion.div>
           </div>
-          <div className="flex justify-between mt-2 text-xs text-gray-500 font-medium">
+          <div className="flex justify-between mt-3 text-xs text-slate-500 font-bold">
             <span>تم معالجة {stats.sent + stats.failed} من أصل {stats.total}</span>
             <span>متبقي {stats.total - (stats.sent + stats.failed)}</span>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-200 flex flex-col min-h-[500px]">
-            <div className="flex items-center justify-between mb-8 pb-4 border-b border-gray-100">
-              <h2 className="text-xl font-bold flex items-center gap-3">
-                <QrCode className="text-[#7AC142] w-6 h-6" />
+          <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 flex flex-col min-h-[500px] relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-slate-200 to-slate-300"></div>
+            <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
+              <h2 className="text-xl font-bold flex items-center gap-3 text-slate-800">
+                <QrCode className="text-slate-400 w-6 h-6" />
                 حالة الاتصال والإرسال
               </h2>
               {waStatus === 'open' && (
-                <div className="flex items-center gap-2 px-3 py-1 bg-[#f2f9ec] text-[#5a8e31] rounded-full text-sm font-medium border border-[#d7eec5]">
-                  <div className="w-2 h-2 rounded-full bg-[#7AC142] animate-pulse"></div>
-                  متصل
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-[#f2f9ec] text-[#4A8522] rounded-full text-sm font-bold border border-[#d7eec5] shadow-sm">
+                  <div className="w-2 h-2 rounded-full bg-[#5A9E2B] animate-pulse"></div>
+                  متصل بواتساب
                 </div>
               )}
             </div>
@@ -249,17 +266,17 @@ export default function Dashboard() {
                     animate={{ opacity: 1, scale: 1 }}
                     className="w-full space-y-8"
                   >
-                    <div className="bg-[#f8fafc] p-6 rounded-2xl border border-gray-200">
+                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-inner">
                       <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-bold text-gray-700 flex items-center gap-2">
+                        <h3 className="font-bold text-slate-700 flex items-center gap-2">
                           <Activity className="w-5 h-5 text-[#f2a900]" />
                           حالة النظام
                         </h3>
-                        <span className={`text-xs font-bold px-3 py-1 rounded-full ${isSending ? 'bg-[#d7eec5] text-[#467026]' : 'bg-gray-200 text-gray-700'}`}>
-                          {isSending ? 'نشط' : 'متوقف'}
+                        <span className={`text-xs font-bold px-3 py-1.5 rounded-full border ${isSending ? 'bg-[#d7eec5] text-[#467026] border-[#bce0a1]' : 'bg-slate-200 text-slate-700 border-slate-300'}`}>
+                          {isSending ? 'نشط الآن' : 'متوقف مؤقتاً'}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-600 font-medium leading-relaxed bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                      <p className="text-sm text-slate-700 font-bold leading-relaxed bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                         {currentAction}
                       </p>
                     </div>
@@ -269,9 +286,9 @@ export default function Dashboard() {
                         <button 
                           onClick={startSending}
                           disabled={isStarting}
-                          className="w-full bg-[#1A1A1A] text-white px-8 py-4 rounded-xl font-bold hover:bg-black transition-all shadow-lg shadow-black/10 flex items-center justify-center gap-3 disabled:opacity-50 text-lg"
+                          className="w-full bg-slate-900 text-white px-8 py-4 rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 flex items-center justify-center gap-3 disabled:opacity-50 text-lg"
                         >
-                          {isStarting ? <Loader2 className="animate-spin" /> : <Send size={24} className="text-[#7AC142]" />}
+                          {isStarting ? <Loader2 className="animate-spin" /> : <Send size={24} className="text-[#8ED257]" />}
                           بدء حملة الإرسال الذكية
                         </button>
                       ) : (
@@ -284,10 +301,10 @@ export default function Dashboard() {
                         </button>
                       )}
                       
-                      <div className="text-xs text-gray-500 text-center space-y-1 mt-2">
-                        <p>💡 النظام يستخدم الذكاء الاصطناعي لتغيير صيغة الرسائل تلقائياً.</p>
-                        <p>⏱️ يتم ترك فاصل زمني (30-90 ثانية) بين كل رسالة لتجنب الحظر.</p>
-                        <p>⏸️ يتوقف النظام لمدة 30 دقيقة بعد كل 20 رسالة.</p>
+                      <div className="text-xs text-slate-500 text-center space-y-2 mt-4 font-medium bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <p className="flex items-center justify-center gap-2"><span className="text-lg">💡</span> النظام يستخدم الذكاء الاصطناعي لتغيير صيغة الرسائل تلقائياً.</p>
+                        <p className="flex items-center justify-center gap-2"><span className="text-lg">⏱️</span> يتم ترك فاصل زمني (30-90 ثانية) بين كل رسالة لتجنب الحظر.</p>
+                        <p className="flex items-center justify-center gap-2"><span className="text-lg">⏸️</span> يتوقف النظام لمدة 30 دقيقة بعد كل 20 رسالة.</p>
                       </div>
                     </div>
                   </motion.div>
@@ -298,12 +315,13 @@ export default function Dashboard() {
                     animate={{ opacity: 1 }}
                     className="text-center space-y-6"
                   >
-                    <div className="bg-white p-6 rounded-3xl shadow-lg border border-gray-100 inline-block">
-                      <img src={qr} alt="WhatsApp QR Code" className="w-64 h-64" />
+                    <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 inline-block relative">
+                      <div className="absolute inset-0 border-2 border-[#8ED257] rounded-3xl opacity-20 animate-pulse"></div>
+                      <img src={qr} alt="WhatsApp QR Code" className="w-64 h-64 relative z-10 rounded-xl" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-lg mb-2">اربط حساب واتساب</h3>
-                      <p className="text-gray-500 text-sm">قم بفتح تطبيق واتساب على هاتفك، اذهب إلى "الأجهزة المرتبطة" وامسح الكود أعلاه.</p>
+                      <h3 className="font-extrabold text-xl mb-2 text-slate-800">اربط حساب واتساب</h3>
+                      <p className="text-slate-500 text-sm font-medium">قم بفتح تطبيق واتساب على هاتفك، اذهب إلى "الأجهزة المرتبطة" وامسح الكود أعلاه.</p>
                     </div>
                   </motion.div>
                 ) : (
@@ -313,17 +331,18 @@ export default function Dashboard() {
                     animate={{ opacity: 1 }}
                     className="text-center space-y-6"
                   >
-                    <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <QrCode className="text-gray-400 w-12 h-12" />
+                    <div className="w-28 h-28 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 border-8 border-white shadow-sm">
+                      <Smartphone className="text-slate-300 w-12 h-12" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-lg mb-2">غير متصل بواتساب</h3>
-                      <p className="text-gray-500 text-sm mb-6">يجب ربط حساب واتساب الخاص بالشركة للبدء في إرسال الإخطارات.</p>
+                      <h3 className="font-extrabold text-xl mb-2 text-slate-800">غير متصل بواتساب</h3>
+                      <p className="text-slate-500 text-sm mb-8 font-medium">يجب ربط حساب واتساب الخاص بالشركة للبدء في إرسال الإخطارات.</p>
                     </div>
                     <button 
                       onClick={connectWa}
-                      className="bg-white border-2 border-[#1A1A1A] text-[#1A1A1A] px-8 py-3 rounded-xl font-bold hover:bg-[#1A1A1A] hover:text-white transition-all shadow-sm"
+                      className="bg-white border-2 border-slate-900 text-slate-900 px-8 py-3.5 rounded-xl font-bold hover:bg-slate-900 hover:text-white transition-all shadow-sm flex items-center justify-center gap-2 mx-auto"
                     >
+                      <QrCode size={20} />
                       توليد كود الاتصال (QR)
                     </button>
                   </motion.div>
@@ -332,12 +351,18 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-200 flex flex-col">
-            <h2 className="text-xl font-bold mb-6 pb-4 border-b border-gray-100 flex items-center gap-2">
-              معاينة الرسالة الأساسية
+          <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 flex flex-col relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#5A9E2B] to-[#8ED257]"></div>
+            <h2 className="text-xl font-bold mb-6 pb-4 border-b border-slate-100 flex items-center gap-3 text-slate-800">
+              <FileText className="w-6 h-6 text-[#5A9E2B]" />
+              معاينة الإخطار القانوني
             </h2>
-            <div className="bg-[#f8fafc] p-6 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap text-gray-700 border border-gray-200 flex-1 overflow-y-auto font-medium">
-              {`السيد / العميل الكريم
+            <div className="bg-slate-50 p-8 rounded-xl text-sm leading-loose whitespace-pre-wrap text-slate-800 border border-slate-200 flex-1 overflow-y-auto font-bold shadow-inner relative">
+              <div className="absolute inset-0 flex items-center justify-center opacity-[0.02] pointer-events-none">
+                <PetrotradeLogo className="w-64 h-64 grayscale" />
+              </div>
+              <div className="relative z-10">
+                {`السيد / العميل الكريم
 
 إنذار قانوني نهائي
 
@@ -357,10 +382,11 @@ export default function Dashboard() {
 العنوان: ش. شكري القواتلي – مول أبو هارون – الدور الثالث علوي
 شركة بتروتريد
 إدارة التحصيل`}
+              </div>
             </div>
-            <div className="mt-4 p-4 bg-[#f2f9ec] text-[#467026] rounded-xl text-xs font-medium border border-[#d7eec5] flex items-start gap-3">
-              <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5 text-[#7AC142]" />
-              <p>
+            <div className="mt-6 p-4 bg-[#f2f9ec] text-[#4A8522] rounded-xl text-xs font-bold border border-[#d7eec5] flex items-start gap-3 shadow-sm">
+              <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5 text-[#5A9E2B]" />
+              <p className="leading-relaxed">
                 هذا هو القالب الأساسي. سيقوم الذكاء الاصطناعي (DeepSeek) بإعادة صياغة المقدمة والخاتمة لكل عميل بشكل مختلف لتجنب حظر واتساب، مع الحفاظ على الإجراءات القانونية والعنوان كما هي تماماً.
               </p>
             </div>
@@ -371,18 +397,19 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ title, value, icon, color, borderColor }: { title: string, value: number, icon: React.ReactNode, color: string, borderColor: string }) {
+function StatCard({ title, value, icon, color, borderColor, textColor }: { title: string, value: number, icon: React.ReactNode, color: string, borderColor: string, textColor: string }) {
   return (
     <motion.div 
       whileHover={{ y: -4 }}
-      className={`bg-white p-6 rounded-3xl shadow-sm border ${borderColor} flex items-center gap-6 transition-all`}
+      className={`bg-white p-6 rounded-2xl shadow-sm border ${borderColor} flex items-center gap-6 transition-all relative overflow-hidden`}
     >
-      <div className={`w-16 h-16 ${color} rounded-2xl flex items-center justify-center shadow-inner`}>
+      <div className={`absolute -right-4 -top-4 w-24 h-24 ${color} rounded-full opacity-50 blur-2xl`}></div>
+      <div className={`w-14 h-14 ${color} rounded-xl flex items-center justify-center shadow-inner border ${borderColor} relative z-10`}>
         {icon}
       </div>
-      <div>
-        <p className="text-gray-500 text-sm font-bold mb-1">{title}</p>
-        <p className="text-4xl font-black text-[#1A1A1A]">{value}</p>
+      <div className="relative z-10">
+        <p className="text-slate-500 text-sm font-bold mb-1">{title}</p>
+        <p className={`text-3xl font-black ${textColor}`}>{value}</p>
       </div>
     </motion.div>
   );
