@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-sans);
+  --font-arabic: var(--font-arabic);
+}
+
+@layer base {
+  .serif {
+    font-family: 'Cormorant Garamond', serif;
+  }
+}
