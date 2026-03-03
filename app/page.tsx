@@ -38,6 +38,27 @@ export default function Dashboard() {
   const [isSending, setIsSending] = useState(false);
   const [currentAction, setCurrentAction] = useState('متوقف');
   const [loading, setLoading] = useState(false);
+  const [isEditingMessage, setIsEditingMessage] = useState(false);
+  const [messageTemplate, setMessageTemplate] = useState(`السيد / العميل الكريم
+
+إنذار قانوني نهائي
+
+بمراجعة سجلات الحساب لدى شركة بتروتريد تبين وجود مديونية مستحقة عليكم مقابل استهلاك الغاز الطبيعي، ولم يتم سدادها حتى تاريخه رغم التنبيهات والمطالبات السابقة.
+
+وعليه يعتبر هذا الإخطار **إنذارًا قانونيًا نهائيًا وأخيرًا** بضرورة سداد كامل المديونية خلال مدة أقصاها **48 ساعة من تاريخ استلام هذه الرسالة**.
+
+وفي حالة عدم السداد خلال المهلة المحددة، ستقوم الشركة فورًا ودون أي إخطار آخر باتخاذ كافة الإجراءات القانونية المقررة قانونًا، والتي تشمل على سبيل المثال لا الحصر:
+
+• تحرير محضر ورفع **جنحة تبديد مواد بترولية** ضد سيادتكم.
+• استبدال العداد الحالي بعداد **مسبق الدفع (كارت)** طبقًا للوائح المنظمة.
+• تحميل العميل **كامل تكلفة العداد الجديد ومصاريف التركيب والإجراءات**، على أن يتم خصمها من عمليات شحن العداد.
+• اتخاذ الإجراءات القضائية اللازمة لتحصيل المديونية مع **إلزامكم بالمصاريف القضائية وأتعاب المحاماة**.
+
+لذا نهيب بسيادتكم سرعة التوجه إلى مقر الشركة أو التواصل فورًا لتسوية المديونية تفاديًا لاتخاذ الإجراءات القانونية.
+
+العنوان: ش. شكري القواتلي – مول أبو هارون – الدور الثالث علوي
+شركة بتروتريد
+إدارة التحصيل`);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -102,7 +123,28 @@ export default function Dashboard() {
 
   const startSending = async () => {
     setIsStarting(true);
-    await fetch('/api/whatsapp?action=start');
+    try {
+      // First try to stop any existing process to be safe
+      await fetch('/api/whatsapp?action=stop');
+      
+      const res = await fetch('/api/whatsapp?action=start', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ template: messageTemplate })
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        if (data.error === 'Already sending') {
+          // This shouldn't happen now because we called stop, but just in case
+          console.log('Process already running');
+        }
+      }
+    } catch (e) {
+      console.error('Failed to start campaign:', e);
+    }
     setTimeout(() => setIsStarting(false), 2000);
   };
 
@@ -353,35 +395,50 @@ export default function Dashboard() {
 
           <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 flex flex-col relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#5A9E2B] to-[#8ED257]"></div>
-            <h2 className="text-xl font-bold mb-6 pb-4 border-b border-slate-100 flex items-center gap-3 text-slate-800">
-              <FileText className="w-6 h-6 text-[#5A9E2B]" />
-              معاينة الإخطار القانوني
-            </h2>
-            <div className="bg-slate-50 p-8 rounded-xl text-sm leading-loose whitespace-pre-wrap text-slate-800 border border-slate-200 flex-1 overflow-y-auto font-bold shadow-inner relative">
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
+              <h2 className="text-xl font-bold flex items-center gap-3 text-slate-800">
+                <FileText className="w-6 h-6 text-[#5A9E2B]" />
+                معاينة الإخطار القانوني
+              </h2>
+              {!isEditingMessage ? (
+                <button 
+                  onClick={() => setIsEditingMessage(true)}
+                  className="text-xs font-bold text-[#5A9E2B] hover:text-[#4A8522] flex items-center gap-1 bg-[#f2f9ec] px-3 py-1.5 rounded-lg border border-[#d7eec5] transition-colors"
+                >
+                  تعديل القالب
+                </button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setIsEditingMessage(false)}
+                    className="text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 transition-colors"
+                  >
+                    إلغاء
+                  </button>
+                  <button 
+                    onClick={() => setIsEditingMessage(false)}
+                    className="text-xs font-bold text-white bg-[#5A9E2B] hover:bg-[#4A8522] px-3 py-1.5 rounded-lg shadow-sm transition-colors"
+                  >
+                    حفظ التغييرات
+                  </button>
+                </div>
+              )}
+            </div>
+            <div className="bg-slate-50 p-6 rounded-xl text-sm leading-loose whitespace-pre-wrap text-slate-800 border border-slate-200 flex-1 overflow-y-auto font-bold shadow-inner relative">
               <div className="absolute inset-0 flex items-center justify-center opacity-[0.02] pointer-events-none">
                 <PetrotradeLogo className="w-64 h-64 grayscale" />
               </div>
-              <div className="relative z-10">
-                {`السيد / العميل الكريم
-
-إنذار قانوني نهائي
-
-بمراجعة سجلات الحساب لدى شركة بتروتريد تبين وجود مديونية مستحقة عليكم مقابل استهلاك الغاز الطبيعي، ولم يتم سدادها حتى تاريخه رغم التنبيهات والمطالبات السابقة.
-
-وعليه يعتبر هذا الإخطار **إنذارًا قانونيًا نهائيًا وأخيرًا** بضرورة سداد كامل المديونية خلال مدة أقصاها **48 ساعة من تاريخ استلام هذه الرسالة**.
-
-وفي حالة عدم السداد خلال المهلة المحددة، ستقوم الشركة فورًا ودون أي إخطار آخر باتخاذ كافة الإجراءات القانونية المقررة قانونًا، والتي تشمل على سبيل المثال لا الحصر:
-
-• تحرير محضر ورفع **جنحة تبديد مواد بترولية** ضد سيادتكم.
-• استبدال العداد الحالي بعداد **مسبق الدفع (كارت)** طبقًا للوائح المنظمة.
-• تحميل العميل **كامل تكلفة العداد الجديد ومصاريف التركيب والإجراءات**، على أن يتم خصمها من عمليات شحن العداد.
-• اتخاذ الإجراءات القضائية اللازمة لتحصيل المديونية مع **إلزامكم بالمصاريف القضائية وأتعاب المحاماة**.
-
-لذا نهيب بسيادتكم سرعة التوجه إلى مقر الشركة أو التواصل فورًا لتسوية المديونية تفاديًا لاتخاذ الإجراءات القانونية.
-
-العنوان: ش. شكري القواتلي – مول أبو هارون – الدور الثالث علوي
-شركة بتروتريد
-إدارة التحصيل`}
+              <div className="relative z-10 h-full">
+                {isEditingMessage ? (
+                  <textarea 
+                    value={messageTemplate}
+                    onChange={(e) => setMessageTemplate(e.target.value)}
+                    className="w-full h-full bg-transparent border-none focus:ring-0 resize-none font-bold text-slate-800 p-0 leading-loose"
+                    dir="rtl"
+                  />
+                ) : (
+                  messageTemplate
+                )}
               </div>
             </div>
             <div className="mt-6 p-4 bg-[#f2f9ec] text-[#4A8522] rounded-xl text-xs font-bold border border-[#d7eec5] flex items-start gap-3 shadow-sm">

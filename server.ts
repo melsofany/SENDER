@@ -61,12 +61,12 @@ ${PROCEDURES}
 
 ${ADDRESS}`;
 
-async function generateMessageVariation(name: string) {
-  let intro = `السيد / ${name || 'العميل الكريم'}\n\nإنذار قانوني نهائي\n\nبمراجعة سجلات الحساب لدى شركة بتروتريد تبين وجود مديونية مستحقة عليكم مقابل استهلاك الغاز الطبيعي، ولم يتم سدادها حتى تاريخه رغم التنبيهات والمطالبات السابقة.\n\nوعليه يعتبر هذا الإخطار **إنذارًا قانونيًا نهائيًا وأخيرًا** بضرورة سداد كامل المديونية خلال مدة أقصاها **48 ساعة من تاريخ استلام هذه الرسالة**.`;
-  let outro = `لذا نهيب بسيادتكم سرعة التوجه إلى مقر الشركة أو التواصل فورًا لتسوية المديونية تفاديًا لاتخاذ الإجراءات القانونية.`;
-
+async function generateMessageVariation(name: string, customTemplate?: string) {
+  const baseTemplate = customTemplate || MESSAGE_TEMPLATE;
+  
+  // If no AI key, just replace the name and return
   if (!process.env.DEEPSEEK_API_KEY) {
-    return `${intro}\n\n${PROCEDURES}\n\n${outro}\n\n${ADDRESS}`;
+    return baseTemplate.replace(/العميل الكريم/g, name || 'العميل الكريم');
   }
   
   try {
@@ -81,41 +81,55 @@ async function generateMessageVariation(name: string) {
         messages: [
           {
             role: 'system',
-            content: 'أنت مساعد ذكي لشركة بتروتريد للغاز الطبيعي. مهمتك إعادة صياغة "المقدمة" و"الخاتمة" لرسالة إنذار قانوني للمتأخرين عن السداد لتجنب حظر واتساب. يجب أن تكون الصياغة حازمة ورسمية. أرجع النتيجة بصيغة JSON فقط تحتوي على مفتاحين: "intro" و "outro". لا تضف أي نص آخر.'
+            content: `أنت خبير صياغة قانونية لشركة بتروتريد. مهمتك إعادة صياغة الرسالة التي سيزودك بها المستخدم لتكون فريدة لغوياً مع الحفاظ على كامل القوة القانونية والمعلومات.
+            
+قواعد العمل:
+1. ممنوع منعاً باتاً ذكر أي شيء عن "إعادة الصياغة" أو "تجنب الحظر" أو "الذكاء الاصطناعي" أو "واتساب" داخل نص الرسالة.
+2. حافظ على كافة المواعيد (48 ساعة) والبيانات القانونية والعناوين كما هي تماماً دون أي تغيير.
+3. ابدأ الرسالة بـ "السيد / ${name || 'العميل الكريم'}".
+4. أرجع نص الرسالة النهائي فقط. لا تضف أي تعليقات قبل أو بعد النص.`
           },
           {
             role: 'user',
-            content: `اسم العميل: ${name || 'العميل الكريم'}
-المقدمة الأصلية:
-السيد / ${name || 'العميل الكريم'}
-إنذار قانوني نهائي
-بمراجعة سجلات الحساب لدى شركة بتروتريد تبين وجود مديونية مستحقة عليكم مقابل استهلاك الغاز الطبيعي، ولم يتم سدادها حتى تاريخه رغم التنبيهات والمطالبات السابقة.
-وعليه يعتبر هذا الإخطار إنذارًا قانونيًا نهائيًا وأخيرًا بضرورة سداد كامل المديونية خلال مدة أقصاها 48 ساعة من تاريخ استلام هذه الرسالة.
-
-الخاتمة الأصلية:
-لذا نهيب بسيادتكم سرعة التوجه إلى مقر الشركة أو التواصل فورًا لتسوية المديونية تفاديًا لاتخاذ الإجراءات القانونية.
-
-أعد صياغتهما مع الحفاظ على المعنى والمدة (48 ساعة)، وأرجع JSON فقط:`
+            content: `النص المطلوب إعادة صياغته:\n${baseTemplate}`
           }
         ],
-        temperature: 0.7,
-        response_format: { type: 'json_object' }
+        temperature: 0.6
       })
     });
 
     const data = await response.json();
     if (data.choices && data.choices[0] && data.choices[0].message) {
-      let content = data.choices[0].message.content;
-      content = content.replace(/```json/g, '').replace(/```/g, '').trim();
-      const parsed = JSON.parse(content);
-      if (parsed.intro) intro = parsed.intro;
-      if (parsed.outro) outro = parsed.outro;
+      let content = data.choices[0].message.content.trim();
+      
+      // Aggressive cleaning of AI meta-talk
+      const phrasesToRemove = [
+        /إليك الرسالة بعد إعادة الصياغة:/g,
+        /تفضل الصياغة الجديدة:/g,
+        /الرسالة الجديدة:/g,
+        /نص الرسالة:/g,
+        /صياغة قانونية:/g,
+        /تجنب حظر واتساب/g,
+        /حظر واتساب/g,
+        /تجنب الحظر/g,
+        /إعادة صياغة/g,
+        /لحماية حسابك/g,
+        /من أجل تجنب الحظر/g,
+        /هذه هي الرسالة:/g,
+        /الصياغة الجديدة/g
+      ];
+      
+      phrasesToRemove.forEach(regex => {
+        content = content.replace(regex, '');
+      });
+
+      return content.trim();
     }
   } catch (error) {
-    console.error('DeepSeek API error or JSON parse error:', error);
+    console.error('DeepSeek API error:', error);
   }
   
-  return `${intro}\n\n${PROCEDURES}\n\n${outro}\n\n${ADDRESS}`;
+  return baseTemplate.replace(/العميل الكريم/g, name || 'العميل الكريم');
 }
 
 async function getNumbersToNotify() {
@@ -138,7 +152,7 @@ async function updateStatus(rowIndex: number, status: string) {
   await updateSheetCell(SPREADSHEET_ID, `Sheet1!C${rowIndex}`, status);
 }
 
-async function processMessages(sock: any) {
+async function processMessages(sock: any, customTemplate?: string) {
   if (isSending) return;
   isSending = true;
   currentAction = 'جاري جلب الأرقام...';
@@ -160,7 +174,7 @@ async function processMessages(sock: any) {
       try {
         currentAction = `جاري صياغة الرسالة للعميل ${item.name || item.phone}...`;
         console.log(`Processing number: ${item.phone}`);
-        const messageText = await generateMessageVariation(item.name);
+        const messageText = await generateMessageVariation(item.name, customTemplate);
         
         let cleanPhone = item.phone.replace(/\D/g, '');
         if (cleanPhone.startsWith('01')) {
@@ -288,10 +302,39 @@ app.prepare().then(() => {
             return;
           }
           
-          processMessages(sock);
-          
-          res.statusCode = 200;
-          res.end(JSON.stringify({ message: 'Ready to send' }));
+          if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => { body += chunk.toString(); });
+            req.on('end', () => {
+              try {
+                const data = JSON.parse(body || '{}');
+                const templateToUse = data.template || null;
+                console.log('Starting campaign. Template source:', templateToUse ? 'Custom (Length: ' + templateToUse.length + ')' : 'Default');
+                
+                // If already sending, we might want to stop it first or just ignore
+                if (isSending) {
+                  console.log('Already sending, ignoring start request');
+                  res.statusCode = 400;
+                  res.end(JSON.stringify({ error: 'Already sending' }));
+                  return;
+                }
+
+                processMessages(sock, templateToUse);
+                res.statusCode = 200;
+                res.end(JSON.stringify({ message: 'Ready to send' }));
+              } catch (e) {
+                console.error('Failed to parse POST body:', e);
+                processMessages(sock);
+                res.statusCode = 200;
+                res.end(JSON.stringify({ message: 'Ready to send (default template)' }));
+              }
+            });
+          } else {
+            console.log('Starting campaign with default template (GET request)');
+            processMessages(sock);
+            res.statusCode = 200;
+            res.end(JSON.stringify({ message: 'Ready to send' }));
+          }
           return;
         }
         

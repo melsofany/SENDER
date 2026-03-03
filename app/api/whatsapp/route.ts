@@ -48,12 +48,50 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ message: 'Sending process started' });
   }
 
+  if (action === 'stop') {
+    (global as any).isSending = false;
+    return NextResponse.json({ message: 'Sending process stopped' });
+  }
+
   return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
 }
 
-async function processMessages(sock: any) {
+export async function POST(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const action = searchParams.get('action');
+
+  const connectionStatus = (global as any).waConnectionStatus || 'none';
+  const sock = (global as any).waSocket || null;
+
+  if (action === 'start') {
+    if (connectionStatus !== 'open' || !sock) {
+      return NextResponse.json({ error: 'WhatsApp not connected' }, { status: 400 });
+    }
+    
+    try {
+      const body = await req.json();
+      const template = body.template || MESSAGE_TEMPLATE;
+      processMessages(sock, template);
+      return NextResponse.json({ message: 'Sending process started' });
+    } catch (e) {
+      processMessages(sock, MESSAGE_TEMPLATE);
+      return NextResponse.json({ message: 'Sending process started with default template' });
+    }
+  }
+
+  return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+}
+
+async function processMessages(sock: any, template: string = MESSAGE_TEMPLATE) {
+  // This is a fallback. Ideally server.ts handles this.
+  // We'll just use the template directly here without AI to avoid duplicate AI logic
+  // and potential meta-talk issues in this fallback route.
   const numbers = await getNumbersToNotify();
+  (global as any).isSending = true;
+  
   for (const item of numbers) {
+    if (!(global as any).isSending) break;
+    
     try {
       let cleanPhone = item.phone.replace(/\D/g, '');
       if (cleanPhone.startsWith('01')) {
@@ -63,12 +101,17 @@ async function processMessages(sock: any) {
         cleanPhone = `${cleanPhone}@s.whatsapp.net`;
       }
 
-      await sock.sendMessage(cleanPhone, { text: MESSAGE_TEMPLATE });
+      // Just simple name replacement for the fallback route
+      const messageText = template.replace(/العميل الكريم/g, item.name || 'العميل الكريم');
+
+      await sock.sendMessage(cleanPhone, { text: messageText });
       await updateStatus(item.rowIndex, 'تم الارسال');
-      await new Promise(resolve => setTimeout(resolve, 5000 + Math.random() * 5000));
+      await new Promise(resolve => setTimeout(resolve, 30000 + Math.random() * 30000));
     } catch (error) {
       console.error(`Failed to send to ${item.phone}:`, error);
       await updateStatus(item.rowIndex, 'فشل الارسال');
     }
   }
+  
+  (global as any).isSending = false;
 }
