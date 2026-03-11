@@ -94,9 +94,12 @@ async function processMessages(sock: any, template: string = MESSAGE_TEMPLATE) {
     
     try {
       let cleanPhone = item.phone.replace(/\D/g, '');
-      if (cleanPhone.startsWith('01')) {
+      if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
         cleanPhone = '2' + cleanPhone;
+      } else if (cleanPhone.startsWith('0') && cleanPhone.length === 10) {
+        cleanPhone = '27' + cleanPhone.substring(1);
       }
+      
       if (!cleanPhone.includes('@s.whatsapp.net')) {
         cleanPhone = `${cleanPhone}@s.whatsapp.net`;
       }

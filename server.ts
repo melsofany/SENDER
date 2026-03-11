@@ -177,9 +177,17 @@ async function processMessages(sock: any, customTemplate?: string) {
         const messageText = await generateMessageVariation(item.name, customTemplate);
         
         let cleanPhone = item.phone.replace(/\D/g, '');
-        if (cleanPhone.startsWith('01')) {
+        // Handle Egyptian numbers (start with 01)
+        if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
           cleanPhone = '2' + cleanPhone;
+        } 
+        // Handle South African numbers (start with 0 and not 01, or 10 digits)
+        else if (cleanPhone.startsWith('0') && cleanPhone.length === 10) {
+          cleanPhone = '27' + cleanPhone.substring(1);
         }
+        // If it's already 11 digits starting with 27, it's a SA number with country code
+        // If it's already 12 digits starting with 20, it's an Egyptian number with country code
+        
         if (!cleanPhone.includes('@s.whatsapp.net')) {
           cleanPhone = `${cleanPhone}@s.whatsapp.net`;
         }
