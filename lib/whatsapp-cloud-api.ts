@@ -45,18 +45,15 @@ export class WhatsAppCloudAPI {
    */
   private formatPhoneNumber(phone: string): string {
     // Remove all non-digit characters
-    let cleanPhone = phone.replace(/\D/g, '');
+    let cleanPhone = phone.replace(/[^0-9]/g, '');
 
-    // Handle South African numbers
-    // South Africa country code: +27
-    // If number starts with 0, replace with 27
+    // Handle Egyptian numbers (country code: +20)
     if (cleanPhone.startsWith('0')) {
-      cleanPhone = '27' + cleanPhone.substring(1);
-    }
-    // If number doesn't start with country code, add it
-    else if (!cleanPhone.startsWith('27')) {
-      // Assume it's a South African number if it doesn't have a country code
-      cleanPhone = '27' + cleanPhone;
+      // Replace leading 0 with Egypt country code 20
+      cleanPhone = '20' + cleanPhone.substring(1);
+    } else if (!cleanPhone.startsWith('20')) {
+      // Add Egypt country code if missing
+      cleanPhone = '20' + cleanPhone;
     }
 
     return cleanPhone;
@@ -69,8 +66,7 @@ export class WhatsAppCloudAPI {
    */
   private validatePhoneNumber(phone: string): boolean {
     const cleanPhone = this.formatPhoneNumber(phone);
-    // South African numbers should be 11 digits (27 + 9 digits)
-    // Or other country codes with appropriate lengths
+    // Egyptian numbers: 20 + 10 digits = 12 digits total
     return cleanPhone.length >= 10 && cleanPhone.length <= 15;
   }
 
@@ -83,7 +79,7 @@ export class WhatsAppCloudAPI {
   async sendMessage(recipientPhone: string, messageText: string): Promise<string> {
     if (!this.validatePhoneNumber(recipientPhone)) {
       throw new Error(
-        `Invalid phone number format: ${recipientPhone}. Expected format: +27XXXXXXXXX or 0XXXXXXXXX for South Africa`
+        `Invalid phone number format: ${recipientPhone}. Expected format: +20XXXXXXXXXX or 01XXXXXXXXXX for Egypt`
       );
     }
 
