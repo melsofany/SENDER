@@ -89,7 +89,7 @@ export class WhatsAppCloudAPI {
 
     const formattedPhone = this.formatPhoneNumber(recipientPhone);
 
-    const url = `https://graph.instagram.com/${this.apiVersion}/${this.phoneNumberId}/messages`;
+    const url = `https://graph.facebook.com/${this.apiVersion}/${this.phoneNumberId}/messages`;
 
     const payload: WhatsAppMessage = {
       messaging_product: 'whatsapp',
@@ -149,7 +149,7 @@ export class WhatsAppCloudAPI {
 
     const formattedPhone = this.formatPhoneNumber(recipientPhone);
 
-    const url = `https://graph.instagram.com/${this.apiVersion}/${this.phoneNumberId}/messages`;
+    const url = `https://graph.facebook.com/${this.apiVersion}/${this.phoneNumberId}/messages`;
 
     const payload: any = {
       messaging_product: 'whatsapp',
@@ -206,7 +206,7 @@ export class WhatsAppCloudAPI {
    * @returns Message status
    */
   async getMessageStatus(messageId: string): Promise<string> {
-    const url = `https://graph.instagram.com/${this.apiVersion}/${messageId}`;
+    const url = `https://graph.facebook.com/${this.apiVersion}/${messageId}`;
 
     try {
       const response = await fetch(url, {

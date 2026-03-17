@@ -32,7 +32,7 @@ export default function Dashboard() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [stats, setStats] = useState({ total: 0, sent: 0, failed: 0 });
-  const [waStatus, setWaStatus] = useState<'connecting' | 'open' | 'close' | 'none'>('none');
+  const [waStatus, setWaStatus] = useState<'connected' | 'disconnected' | 'error' | 'none'>('none');
   const [qr, setQr] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -291,17 +291,17 @@ export default function Dashboard() {
                 <QrCode className="text-slate-400 w-6 h-6" />
                 حالة الاتصال والإرسال
               </h2>
-              {waStatus === 'open' && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-[#f2f9ec] text-[#4A8522] rounded-full text-sm font-bold border border-[#d7eec5] shadow-sm">
-                  <div className="w-2 h-2 rounded-full bg-[#5A9E2B] animate-pulse"></div>
-                  متصل بواتساب
-                </div>
-              )}
+                {waStatus === 'connected' && (
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-[#f2f9ec] text-[#4A8522] rounded-full text-sm font-bold border border-[#d7eec5] shadow-sm">
+                    <div className="w-2 h-2 rounded-full bg-[#5A9E2B] animate-pulse"></div>
+                    WhatsApp Cloud API مفعل
+                  </div>
+                )}
             </div>
             
             <div className="flex-1 flex flex-col items-center justify-center">
               <AnimatePresence mode="wait">
-                {waStatus === 'open' ? (
+                {waStatus === 'connected' ? (
                   <motion.div 
                     key="connected"
                     initial={{ opacity: 0, scale: 0.95 }}
@@ -377,15 +377,15 @@ export default function Dashboard() {
                       <Smartphone className="text-slate-300 w-12 h-12" />
                     </div>
                     <div>
-                      <h3 className="font-extrabold text-xl mb-2 text-slate-800">غير متصل بواتساب</h3>
-                      <p className="text-slate-500 text-sm mb-8 font-medium">يجب ربط حساب واتساب الخاص بالشركة للبدء في إرسال الإخطارات.</p>
+                      <h3 className="font-extrabold text-xl mb-2 text-slate-800">WhatsApp Cloud API غير مفعل</h3>
+                      <p className="text-slate-500 text-sm mb-8 font-medium">يجب ضبط إعدادات WhatsApp Cloud API في ملف .env للبدء في إرسال الإخطارات.</p>
                     </div>
                     <button 
                       onClick={connectWa}
                       className="bg-white border-2 border-slate-900 text-slate-900 px-8 py-3.5 rounded-xl font-bold hover:bg-slate-900 hover:text-white transition-all shadow-sm flex items-center justify-center gap-2 mx-auto"
                     >
-                      <QrCode size={20} />
-                      توليد كود الاتصال (QR)
+                      <Smartphone size={20} />
+                      تفعيل الاتصال بـ Cloud API
                     </button>
                   </motion.div>
                 )}

@@ -3,14 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node server.ts",
+    "dev": "node server-cloud-api.ts",
     "build": "next build",
-    "start": "node server.ts",
+    "start": "node server-cloud-api.ts",
     "lint": "next lint"
   },
   "dependencies": {
     "@google/genai": "^1.17.0",
-    "whatsapp-web.js": "^1.26.1",
+
     "@hookform/resolvers": "^5.2.1",
     "autoprefixer": "^10.4.21",
     "class-variance-authority": "^0.7.1",
@@ -23,8 +23,8 @@
     "react-dom": "^19.2.1",
     "tailwind-merge": "^3.3.1",
     "googleapis": "^144.0.0",
-    "@whiskeysockets/baileys": "^6.7.9",
-    "qrcode": "^1.5.4",
+
+
     "pino": "^9.4.0",
     "@hapi/boom": "^10.0.1"
   },
@@ -34,7 +34,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/qrcode": "^1.5.5",
+
     "eslint": "9.39.1",
     "eslint-config-next": "16.0.8",
     "tailwindcss": "4.1.11",
