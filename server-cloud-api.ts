@@ -12,7 +12,7 @@ import { getSheetData, updateSheetCell } from './lib/google-sheets.ts';
 import { WhatsAppCloudAPI } from './lib/whatsapp-cloud-api.ts';
 
 const dev = process.env.NODE_ENV !== 'production';
-const hostname = 'localhost';
+const hostname = '0.0.0.0';
 const port = parseInt(process.env.PORT || '3000', 10);
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
