@@ -3,14 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node server-cloud-api.ts",
+    "dev": "tsx server-cloud-api.ts",
     "build": "next build",
-    "start": "node server-cloud-api.ts",
+    "start": "tsx server-cloud-api.ts",
     "lint": "next lint"
   },
   "dependencies": {
     "@google/genai": "^1.17.0",
-
     "@hookform/resolvers": "^5.2.1",
     "autoprefixer": "^10.4.21",
     "class-variance-authority": "^0.7.1",
@@ -23,10 +22,9 @@
     "react-dom": "^19.2.1",
     "tailwind-merge": "^3.3.1",
     "googleapis": "^144.0.0",
-
-
     "pino": "^9.4.0",
-    "@hapi/boom": "^10.0.1"
+    "@hapi/boom": "^10.0.1",
+    "tsx": "^4.19.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.1.11",
@@ -34,7 +32,6 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-
     "eslint": "9.39.1",
     "eslint-config-next": "16.0.8",
     "tailwindcss": "4.1.11",
