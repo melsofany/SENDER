@@ -5,7 +5,8 @@
 
 interface WASenderResponse {
   success: boolean;
-  data: {
+  message?: string;
+  data?: {
     msgId: number;
     jid: string;
     status: string;
@@ -31,21 +32,16 @@ export class WhatsAppCloudAPI {
     // Remove all non-digit characters
     let cleanPhone = phone.replace(/[^0-9]/g, '');
 
-    // Handle Egyptian numbers (country code: +20)
+    // Handle Egyptian numbers (country code: 20)
     if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
-      // Egyptian mobile number starting with 01...
+      // Egyptian mobile number starting with 01... (e.g., 01012345678 -> 201012345678)
       cleanPhone = '2' + cleanPhone;
-    } else if (cleanPhone.startsWith('0') && cleanPhone.length === 10) {
-      // Possible South African or other 10-digit number starting with 0
-      // Default to Egypt for this specific project context if it's 01...
-      if (cleanPhone.startsWith('1')) {
-         cleanPhone = '20' + cleanPhone;
-      } else {
-         // Other cases, keep as is but add + later
-      }
-    } else if (cleanPhone.length === 10 && !cleanPhone.startsWith('0')) {
-      // 10 digits without leading 0, assume Egypt mobile
+    } else if (cleanPhone.startsWith('1') && cleanPhone.length === 10) {
+      // Egyptian mobile number without leading 0 (e.g., 1012345678 -> 201012345678)
       cleanPhone = '20' + cleanPhone;
+    } else if (cleanPhone.startsWith('00')) {
+      // Double zero prefix (e.g., 002010...)
+      cleanPhone = cleanPhone.substring(2);
     }
 
     // Ensure it starts with + for E.164
@@ -100,11 +96,11 @@ export class WhatsAppCloudAPI {
       if (!response.ok || !data.success) {
         console.error('WASenderApi Error:', data);
         throw new Error(
-          `Failed to send message: ${response.status} - ${JSON.stringify(data)}`
+          `Failed to send message: ${response.message || response.statusText || JSON.stringify(data)}`
         );
       }
 
-      const messageId = data.data.msgId.toString();
+      const messageId = data.data?.msgId.toString() || 'unknown';
       console.log(`Message sent successfully to ${formattedPhone}. Message ID: ${messageId}`);
       return messageId;
     } catch (error) {
@@ -144,7 +140,7 @@ export class WhatsAppCloudAPI {
         5: 'played'
       };
       
-      return statusMap[data.data.status] || 'unknown';
+      return statusMap[data.data?.status] || 'unknown';
     } catch (error) {
       console.error('Error getting message status:', error);
       throw error;
