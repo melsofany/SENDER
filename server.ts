@@ -1,21 +1,8 @@
 import { createServer } from 'http';
 import { parse } from 'url';
 import next from 'next';
-import * as baileys from '@whiskeysockets/baileys';
-import { Boom } from '@hapi/boom';
-import pino from 'pino';
-import QRCode from 'qrcode';
-import path from 'path';
-import fs from 'fs';
 import { getSheetData, updateSheetCell } from './lib/google-sheets.ts';
-
-const makeWASocket = (baileys as any).default?.makeWASocket || (baileys as any).makeWASocket || (baileys as any).default || baileys;
-const {
-  DisconnectReason,
-  useMultiFileAuthState,
-  fetchLatestBaileysVersion,
-  makeCacheableSignalKeyStore
-} = baileys;
+import { createWhatsAppClient } from './lib/whatsapp-cloud-api.ts';
 
 const dev = process.env.NODE_ENV !== 'production';
 const hostname = 'localhost';
@@ -23,11 +10,8 @@ const port = parseInt(process.env.PORT || '3000', 10);
 const app = next({ dev, hostname, port });
 const handle = app.getRequestHandler();
 
-// WhatsApp State
-let sock: any = null;
-let qrCode: string | null = null;
-let connectionStatus: 'connecting' | 'open' | 'close' | 'none' = 'none';
-const logger = pino({ level: 'silent' });
+// WhatsApp Client
+const waClient = createWhatsAppClient();
 
 // Sending State
 let isSending = false;
@@ -64,7 +48,6 @@ ${ADDRESS}`;
 async function generateMessageVariation(name: string, customTemplate?: string) {
   const baseTemplate = customTemplate || MESSAGE_TEMPLATE;
   
-  // If no AI key, just replace the name and return
   if (!process.env.DEEPSEEK_API_KEY) {
     return baseTemplate.replace(/العميل الكريم/g, name || 'العميل الكريم');
   }
@@ -102,7 +85,6 @@ async function generateMessageVariation(name: string, customTemplate?: string) {
     if (data.choices && data.choices[0] && data.choices[0].message) {
       let content = data.choices[0].message.content.trim();
       
-      // Aggressive cleaning of AI meta-talk
       const phrasesToRemove = [
         /إليك الرسالة بعد إعادة الصياغة:/g,
         /تفضل الصياغة الجديدة:/g,
@@ -134,9 +116,7 @@ async function generateMessageVariation(name: string, customTemplate?: string) {
 
 async function getNumbersToNotify() {
   const SPREADSHEET_ID = process.env.GOOGLE_SHEET_ID!;
-  console.log('SPREADSHEET_ID in getNumbersToNotify:', SPREADSHEET_ID);
   const data = await getSheetData(SPREADSHEET_ID, 'Sheet1!A2:C');
-  console.log('Data fetched from sheets:', data?.length);
   return data
     .map((row: any, index: number) => ({
       rowIndex: index + 2,
@@ -152,18 +132,16 @@ async function updateStatus(rowIndex: number, status: string) {
   await updateSheetCell(SPREADSHEET_ID, `Sheet1!C${rowIndex}`, status);
 }
 
-async function processMessages(sock: any, customTemplate?: string) {
+async function processMessages(customTemplate?: string) {
   if (isSending) return;
   isSending = true;
   currentAction = 'جاري جلب الأرقام...';
-  console.log('Starting to process messages...');
   
   try {
     const numbers = await getNumbersToNotify();
-    console.log(`Found ${numbers.length} numbers to notify.`);
     
     for (const item of numbers) {
-      if (!isSending) break; // Allow stopping
+      if (!isSending) break;
       
       if (messagesSentInBatch >= BATCH_SIZE) {
         currentAction = `تم إرسال ${BATCH_SIZE} رسالة. فترة راحة لمدة 30 دقيقة لتجنب الحظر...`;
@@ -173,37 +151,16 @@ async function processMessages(sock: any, customTemplate?: string) {
       
       try {
         currentAction = `جاري صياغة الرسالة للعميل ${item.name || item.phone}...`;
-        console.log(`Processing number: ${item.phone}`);
         const messageText = await generateMessageVariation(item.name, customTemplate);
         
-        let cleanPhone = item.phone.replace(/\D/g, '');
-        // Handle Egyptian numbers (start with 01)
-        if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
-          cleanPhone = '2' + cleanPhone;
-        } 
-        // Handle South African numbers (start with 0 and not 01, or 10 digits)
-        else if (cleanPhone.startsWith('0') && cleanPhone.length === 10) {
-          cleanPhone = '27' + cleanPhone.substring(1);
-        }
-        // If it's already 11 digits starting with 27, it's a SA number with country code
-        // If it's already 12 digits starting with 20, it's an Egyptian number with country code
+        currentAction = `جاري إرسال الرسالة إلى ${item.phone}...`;
+        await waClient.sendMessage(item.phone, messageText);
         
-        if (!cleanPhone.includes('@s.whatsapp.net')) {
-          cleanPhone = `${cleanPhone}@s.whatsapp.net`;
-        }
-
-        currentAction = `جاري إرسال الرسالة إلى ${cleanPhone}...`;
-        console.log(`Sending message to ${cleanPhone}...`);
-        await sock.sendMessage(cleanPhone, { text: messageText });
-        
-        console.log(`Message sent to ${cleanPhone}. Updating status...`);
         await updateStatus(item.rowIndex, 'تم الارسال');
-        
         messagesSentInBatch++;
         
         const delay = Math.floor(Math.random() * (90000 - 30000 + 1)) + 30000;
         currentAction = `تم الإرسال. انتظار ${Math.round(delay/1000)} ثانية قبل الرقم التالي...`;
-        console.log(`Status updated for ${cleanPhone}. Waiting ${Math.round(delay/1000)}s...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       } catch (error) {
         console.error(`Failed to send to ${item.phone}:`, error);
@@ -211,64 +168,11 @@ async function processMessages(sock: any, customTemplate?: string) {
       }
     }
     currentAction = 'تم الانتهاء من إرسال جميع الرسائل.';
-    console.log('Finished processing all messages.');
   } catch (error) {
     console.error('Error in processMessages:', error);
     currentAction = 'حدث خطأ أثناء الإرسال.';
   } finally {
     isSending = false;
-  }
-}
-
-async function connectToWhatsApp() {
-  try {
-    const authPath = path.join(process.cwd(), 'whatsapp_auth_info');
-    if (!fs.existsSync(authPath)) {
-      fs.mkdirSync(authPath, { recursive: true });
-    }
-    
-    const { state, saveCreds } = await useMultiFileAuthState(authPath);
-    const { version } = await fetchLatestBaileysVersion();
-
-    sock = makeWASocket({
-      version,
-      logger,
-      auth: {
-        creds: state.creds,
-        keys: makeCacheableSignalKeyStore(state.keys, logger),
-      },
-      printQRInTerminal: false,
-    });
-
-    sock.ev.on('connection.update', async (update: any) => {
-      const { connection, lastDisconnect, qr } = update;
-      
-      if (qr) {
-        qrCode = await QRCode.toDataURL(qr);
-      }
-
-      if (connection === 'close') {
-        const shouldReconnect = (lastDisconnect?.error as Boom)?.output?.statusCode !== DisconnectReason.loggedOut;
-        connectionStatus = 'close';
-        qrCode = null;
-        if (shouldReconnect) {
-          setTimeout(connectToWhatsApp, 5000);
-        } else {
-          // If logged out, delete auth info
-          fs.rmSync(authPath, { recursive: true, force: true });
-        }
-      } else if (connection === 'open') {
-        connectionStatus = 'open';
-        qrCode = null;
-      } else if (connection) {
-        connectionStatus = connection;
-      }
-    });
-
-    sock.ev.on('creds.update', saveCreds);
-  } catch (error) {
-    console.error('Failed to initialize WhatsApp socket:', error);
-    connectionStatus = 'close';
   }
 }
 
@@ -278,7 +182,6 @@ app.prepare().then(() => {
       const parsedUrl = parse(req.url!, true);
       const { pathname, query } = parsedUrl;
 
-      // Intercept WhatsApp API calls
       if (pathname === '/api/whatsapp') {
         const action = query.action;
         res.setHeader('Content-Type', 'application/json');
@@ -286,8 +189,8 @@ app.prepare().then(() => {
         if (action === 'status') {
           res.statusCode = 200;
           res.end(JSON.stringify({ 
-            status: connectionStatus, 
-            qr: qrCode,
+            status: 'open', // Always open since it's API based
+            qr: null,
             isSending,
             currentAction
           }));
@@ -295,51 +198,35 @@ app.prepare().then(() => {
         }
 
         if (action === 'connect') {
-          if (connectionStatus !== 'open' && connectionStatus !== 'connecting') {
-            connectToWhatsApp();
-          }
           res.statusCode = 200;
-          res.end(JSON.stringify({ message: 'Connection initiated' }));
+          res.end(JSON.stringify({ message: 'API Client is always connected' }));
           return;
         }
 
         if (action === 'start') {
-          if (connectionStatus !== 'open' || !sock) {
+          if (isSending) {
             res.statusCode = 400;
-            res.end(JSON.stringify({ error: 'WhatsApp not connected' }));
+            res.end(JSON.stringify({ error: 'Already sending' }));
             return;
           }
-          
+
           if (req.method === 'POST') {
             let body = '';
             req.on('data', chunk => { body += chunk.toString(); });
             req.on('end', () => {
               try {
                 const data = JSON.parse(body || '{}');
-                const templateToUse = data.template || null;
-                console.log('Starting campaign. Template source:', templateToUse ? 'Custom (Length: ' + templateToUse.length + ')' : 'Default');
-                
-                // If already sending, we might want to stop it first or just ignore
-                if (isSending) {
-                  console.log('Already sending, ignoring start request');
-                  res.statusCode = 400;
-                  res.end(JSON.stringify({ error: 'Already sending' }));
-                  return;
-                }
-
-                processMessages(sock, templateToUse);
+                processMessages(data.template);
                 res.statusCode = 200;
                 res.end(JSON.stringify({ message: 'Ready to send' }));
               } catch (e) {
-                console.error('Failed to parse POST body:', e);
-                processMessages(sock);
+                processMessages();
                 res.statusCode = 200;
                 res.end(JSON.stringify({ message: 'Ready to send (default template)' }));
               }
             });
           } else {
-            console.log('Starting campaign with default template (GET request)');
-            processMessages(sock);
+            processMessages();
             res.statusCode = 200;
             res.end(JSON.stringify({ message: 'Ready to send' }));
           }
@@ -354,11 +241,6 @@ app.prepare().then(() => {
           return;
         }
       }
-
-      // Expose socket globally for Next.js API routes to use
-      (global as any).waSocket = sock;
-      (global as any).waConnectionStatus = connectionStatus;
-      (global as any).waQrCode = qrCode;
 
       await handle(req, res, parsedUrl);
     } catch (err) {

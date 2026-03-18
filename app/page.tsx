@@ -7,7 +7,6 @@ import {
   CheckCircle2, 
   XCircle, 
   Users, 
-  QrCode, 
   LogOut, 
   ShieldCheck,
   Loader2,
@@ -15,7 +14,8 @@ import {
   PauseCircle,
   Activity,
   FileText,
-  Smartphone
+  Smartphone,
+  Check
 } from 'lucide-react';
 import { verifyPassword, getStats } from '@/app/actions';
 
@@ -32,8 +32,7 @@ export default function Dashboard() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [stats, setStats] = useState({ total: 0, sent: 0, failed: 0 });
-  const [waStatus, setWaStatus] = useState<'connected' | 'disconnected' | 'error' | 'none'>('none');
-  const [qr, setQr] = useState<string | null>(null);
+  const [waStatus, setWaStatus] = useState<'open' | 'close' | 'none'>('none');
   const [isStarting, setIsStarting] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [currentAction, setCurrentAction] = useState('متوقف');
@@ -80,24 +79,11 @@ export default function Dashboard() {
   const fetchWaStatus = async () => {
     try {
       const res = await fetch('/api/whatsapp?action=status');
-      if (!res.ok) {
-        if (res.status !== 503 && res.status !== 502 && res.status !== 504) {
-          console.error(`Server returned an error: ${res.status}`);
-        }
-        return;
-      }
-      const text = await res.text();
-      try {
-        const data = JSON.parse(text);
-        setWaStatus(data.status);
-        setQr(data.qr);
-        setIsSending(data.isSending || false);
-        setCurrentAction(data.currentAction || 'متوقف');
-      } catch (e) {
-        if (!text.toLowerCase().includes('<!doctype html>')) {
-          console.error('Failed to parse JSON:', text.substring(0, 100));
-        }
-      }
+      if (!res.ok) return;
+      const data = await res.json();
+      setWaStatus(data.status);
+      setIsSending(data.isSending || false);
+      setCurrentAction(data.currentAction || 'متوقف');
     } catch (e) {
       // Ignore network errors during polling
     }
@@ -116,32 +102,15 @@ export default function Dashboard() {
     setLoading(false);
   };
 
-  const connectWa = async () => {
-    await fetch('/api/whatsapp?action=connect');
-    fetchWaStatus();
-  };
-
   const startSending = async () => {
     setIsStarting(true);
     try {
-      // First try to stop any existing process to be safe
       await fetch('/api/whatsapp?action=stop');
-      
-      const res = await fetch('/api/whatsapp?action=start', {
+      await fetch('/api/whatsapp?action=start', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ template: messageTemplate })
       });
-      
-      if (!res.ok) {
-        const data = await res.json();
-        if (data.error === 'Already sending') {
-          // This shouldn't happen now because we called stop, but just in case
-          console.log('Process already running');
-        }
-      }
     } catch (e) {
       console.error('Failed to start campaign:', e);
     }
@@ -158,7 +127,6 @@ export default function Dashboard() {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans relative overflow-hidden" dir="rtl">
-        {/* Decorative Background */}
         <div className="absolute top-[-20%] right-[-10%] w-[600px] h-[600px] bg-[#8ED257] rounded-full mix-blend-multiply filter blur-[150px] opacity-20 animate-pulse"></div>
         <div className="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] bg-[#4A8522] rounded-full mix-blend-multiply filter blur-[150px] opacity-10"></div>
         
@@ -258,194 +226,113 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Progress Bar */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 relative overflow-hidden">
           <div className="flex justify-between items-center mb-3">
             <span className="text-sm font-bold text-slate-700 flex items-center gap-2">
               <Activity className="w-4 h-4 text-[#5A9E2B]" />
-              تقدم الحملة
+              حالة الحملة الحالية
             </span>
-            <span className="text-sm font-bold text-[#4A8522] bg-[#f2f9ec] px-3 py-1 rounded-full border border-[#d7eec5]">{progress}%</span>
+            <span className="text-sm font-extrabold text-[#5A9E2B]">{progress}%</span>
           </div>
-          <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden shadow-inner">
+          <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden border border-slate-200">
             <motion.div 
-              className="bg-gradient-to-r from-[#5A9E2B] to-[#8ED257] h-3 rounded-full relative" 
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.5 }}
-            >
-              <div className="absolute top-0 left-0 right-0 bottom-0 bg-white/20 animate-[pulse_2s_infinite]"></div>
-            </motion.div>
+              className="bg-gradient-to-l from-[#7AC142] to-[#5A9E2B] h-full shadow-sm"
+            />
           </div>
-          <div className="flex justify-between mt-3 text-xs text-slate-500 font-bold">
-            <span>تم معالجة {stats.sent + stats.failed} من أصل {stats.total}</span>
-            <span>متبقي {stats.total - (stats.sent + stats.failed)}</span>
+          <div className="mt-4 flex items-center gap-3 text-sm font-bold text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100">
+            <div className="w-2 h-2 rounded-full bg-[#5A9E2B] animate-pulse"></div>
+            {currentAction}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 flex flex-col min-h-[500px] relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-slate-200 to-slate-300"></div>
-            <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-100">
-              <h2 className="text-xl font-bold flex items-center gap-3 text-slate-800">
-                <QrCode className="text-slate-400 w-6 h-6" />
-                حالة الاتصال والإرسال
-              </h2>
-                {waStatus === 'connected' && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-[#f2f9ec] text-[#4A8522] rounded-full text-sm font-bold border border-[#d7eec5] shadow-sm">
-                    <div className="w-2 h-2 rounded-full bg-[#5A9E2B] animate-pulse"></div>
-                    WhatsApp Cloud API مفعل
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-7 space-y-6">
+            <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white rounded-xl shadow-sm border border-slate-100">
+                    <FileText className="w-5 h-5 text-slate-700" />
                   </div>
-                )}
-            </div>
-            
-            <div className="flex-1 flex flex-col items-center justify-center">
-              <AnimatePresence mode="wait">
-                {waStatus === 'connected' ? (
-                  <motion.div 
-                    key="connected"
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="w-full space-y-8"
-                  >
-                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-inner">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-bold text-slate-700 flex items-center gap-2">
-                          <Activity className="w-5 h-5 text-[#f2a900]" />
-                          حالة النظام
-                        </h3>
-                        <span className={`text-xs font-bold px-3 py-1.5 rounded-full border ${isSending ? 'bg-[#d7eec5] text-[#467026] border-[#bce0a1]' : 'bg-slate-200 text-slate-700 border-slate-300'}`}>
-                          {isSending ? 'نشط الآن' : 'متوقف مؤقتاً'}
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-700 font-bold leading-relaxed bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                        {currentAction}
-                      </p>
-                    </div>
-
-                    <div className="flex flex-col gap-4">
-                      {!isSending ? (
-                        <button 
-                          onClick={startSending}
-                          disabled={isStarting}
-                          className="w-full bg-slate-900 text-white px-8 py-4 rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20 flex items-center justify-center gap-3 disabled:opacity-50 text-lg"
-                        >
-                          {isStarting ? <Loader2 className="animate-spin" /> : <Send size={24} className="text-[#8ED257]" />}
-                          بدء حملة الإرسال الذكية
-                        </button>
-                      ) : (
-                        <button 
-                          onClick={stopSending}
-                          className="w-full bg-red-50 text-red-600 border-2 border-red-200 px-8 py-4 rounded-xl font-bold hover:bg-red-100 transition-all flex items-center justify-center gap-3 text-lg"
-                        >
-                          <PauseCircle size={24} />
-                          إيقاف الإرسال مؤقتاً
-                        </button>
-                      )}
-                      
-                      <div className="text-xs text-slate-500 text-center space-y-2 mt-4 font-medium bg-slate-50 p-4 rounded-xl border border-slate-100">
-                        <p className="flex items-center justify-center gap-2"><span className="text-lg">💡</span> النظام يستخدم الذكاء الاصطناعي لتغيير صيغة الرسائل تلقائياً.</p>
-                        <p className="flex items-center justify-center gap-2"><span className="text-lg">⏱️</span> يتم ترك فاصل زمني (30-90 ثانية) بين كل رسالة لتجنب الحظر.</p>
-                        <p className="flex items-center justify-center gap-2"><span className="text-lg">⏸️</span> يتوقف النظام لمدة 30 دقيقة بعد كل 20 رسالة.</p>
-                      </div>
-                    </div>
-                  </motion.div>
-                ) : qr ? (
-                  <motion.div 
-                    key="qr"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-center space-y-6"
-                  >
-                    <div className="bg-white p-6 rounded-3xl shadow-xl border border-slate-100 inline-block relative">
-                      <div className="absolute inset-0 border-2 border-[#8ED257] rounded-3xl opacity-20 animate-pulse"></div>
-                      <img src={qr} alt="WhatsApp QR Code" className="w-64 h-64 relative z-10 rounded-xl" />
-                    </div>
-                    <div>
-                      <h3 className="font-extrabold text-xl mb-2 text-slate-800">اربط حساب واتساب</h3>
-                      <p className="text-slate-500 text-sm font-medium">قم بفتح تطبيق واتساب على هاتفك، اذهب إلى "الأجهزة المرتبطة" وامسح الكود أعلاه.</p>
-                    </div>
-                  </motion.div>
-                ) : (
-                  <motion.div 
-                    key="none"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-center space-y-6"
-                  >
-                    <div className="w-28 h-28 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6 border-8 border-white shadow-sm">
-                      <Smartphone className="text-slate-300 w-12 h-12" />
-                    </div>
-                    <div>
-                      <h3 className="font-extrabold text-xl mb-2 text-slate-800">WhatsApp Cloud API غير مفعل</h3>
-                      <p className="text-slate-500 text-sm mb-8 font-medium">يجب ضبط إعدادات WhatsApp Cloud API في ملف .env للبدء في إرسال الإخطارات.</p>
-                    </div>
-                    <button 
-                      onClick={connectWa}
-                      className="bg-white border-2 border-slate-900 text-slate-900 px-8 py-3.5 rounded-xl font-bold hover:bg-slate-900 hover:text-white transition-all shadow-sm flex items-center justify-center gap-2 mx-auto"
-                    >
-                      <Smartphone size={20} />
-                      تفعيل الاتصال بـ Cloud API
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
-
-          <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200 flex flex-col relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#5A9E2B] to-[#8ED257]"></div>
-            <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-100">
-              <h2 className="text-xl font-bold flex items-center gap-3 text-slate-800">
-                <FileText className="w-6 h-6 text-[#5A9E2B]" />
-                معاينة الإخطار القانوني
-              </h2>
-              {!isEditingMessage ? (
-                <button 
-                  onClick={() => setIsEditingMessage(true)}
-                  className="text-xs font-bold text-[#5A9E2B] hover:text-[#4A8522] flex items-center gap-1 bg-[#f2f9ec] px-3 py-1.5 rounded-lg border border-[#d7eec5] transition-colors"
-                >
-                  تعديل القالب
-                </button>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => setIsEditingMessage(false)}
-                    className="text-xs font-bold text-slate-500 hover:text-slate-700 bg-slate-100 px-3 py-1.5 rounded-lg border border-slate-200 transition-colors"
-                  >
-                    إلغاء
-                  </button>
-                  <button 
-                    onClick={() => setIsEditingMessage(false)}
-                    className="text-xs font-bold text-white bg-[#5A9E2B] hover:bg-[#4A8522] px-3 py-1.5 rounded-lg shadow-sm transition-colors"
-                  >
-                    حفظ التغييرات
-                  </button>
+                  <h2 className="font-extrabold text-slate-800">قالب الرسالة القانونية</h2>
                 </div>
-              )}
-            </div>
-            <div className="bg-slate-50 p-6 rounded-xl text-sm leading-loose whitespace-pre-wrap text-slate-800 border border-slate-200 flex-1 overflow-y-auto font-bold shadow-inner relative">
-              <div className="absolute inset-0 flex items-center justify-center opacity-[0.02] pointer-events-none">
-                <PetrotradeLogo className="w-64 h-64 grayscale" />
+                <button 
+                  onClick={() => setIsEditingMessage(!isEditingMessage)}
+                  className="text-sm font-bold text-[#5A9E2B] hover:bg-[#5A9E2B]/10 px-4 py-2 rounded-xl transition-colors border border-transparent hover:border-[#5A9E2B]/20"
+                >
+                  {isEditingMessage ? 'حفظ التعديلات' : 'تعديل النص'}
+                </button>
               </div>
-              <div className="relative z-10 h-full">
+              <div className="p-6">
                 {isEditingMessage ? (
                   <textarea 
                     value={messageTemplate}
                     onChange={(e) => setMessageTemplate(e.target.value)}
-                    className="w-full h-full bg-transparent border-none focus:ring-0 resize-none font-bold text-slate-800 p-0 leading-loose"
-                    dir="rtl"
+                    className="w-full h-[400px] p-6 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-[#5A9E2B] focus:border-transparent outline-none font-sans text-slate-700 leading-relaxed bg-slate-50/30"
                   />
                 ) : (
-                  messageTemplate
+                  <div className="bg-slate-50 p-8 rounded-2xl border border-slate-100 text-slate-700 whitespace-pre-wrap leading-relaxed font-medium shadow-inner">
+                    {messageTemplate}
+                  </div>
                 )}
               </div>
             </div>
-            <div className="mt-6 p-4 bg-[#f2f9ec] text-[#4A8522] rounded-xl text-xs font-bold border border-[#d7eec5] flex items-start gap-3 shadow-sm">
-              <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5 text-[#5A9E2B]" />
-              <p className="leading-relaxed">
-                هذا هو القالب الأساسي. سيقوم الذكاء الاصطناعي (DeepSeek) بإعادة صياغة المقدمة والخاتمة لكل عميل بشكل مختلف لتجنب حظر واتساب، مع الحفاظ على الإجراءات القانونية والعنوان كما هي تماماً.
-              </p>
+          </div>
+
+          <div className="lg:col-span-5 space-y-6">
+            <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="p-6 border-b border-slate-100 bg-slate-50/50">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white rounded-xl shadow-sm border border-slate-100">
+                    <Smartphone className="w-5 h-5 text-slate-700" />
+                  </div>
+                  <h2 className="font-extrabold text-slate-800">حالة الاتصال والتحكم</h2>
+                </div>
+              </div>
+              <div className="p-8 space-y-8">
+                <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-3xl border border-slate-100 border-dashed">
+                  <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-4 shadow-sm border border-slate-100">
+                    <ShieldCheck className="w-8 h-8 text-[#5A9E2B]" />
+                  </div>
+                  <div className="text-center">
+                    <h3 className="font-extrabold text-slate-900 mb-1">WASenderAPI متصل</h3>
+                    <p className="text-sm text-slate-500 font-bold">النظام جاهز لإرسال الرسائل عبر السحابة</p>
+                  </div>
+                  <div className="mt-6 flex items-center gap-2 px-4 py-1.5 bg-[#f2f9ec] text-[#4A8522] rounded-full text-xs font-black border border-[#d7eec5]">
+                    <div className="w-2 h-2 rounded-full bg-[#5A9E2B]"></div>
+                    متصل بالخدمة السحابية
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {!isSending ? (
+                    <button 
+                      onClick={startSending}
+                      disabled={isStarting}
+                      className="w-full bg-[#5A9E2B] text-white py-5 rounded-2xl font-black hover:bg-[#4A8522] transition-all shadow-lg shadow-[#5A9E2B]/20 flex items-center justify-center gap-3 text-lg disabled:opacity-50"
+                    >
+                      {isStarting ? <Loader2 className="animate-spin" /> : <Send size={22} />}
+                      بدء حملة الإرسال الآن
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={stopSending}
+                      className="w-full bg-red-600 text-white py-5 rounded-2xl font-black hover:bg-red-700 transition-all shadow-lg shadow-red-600/20 flex items-center justify-center gap-3 text-lg"
+                    >
+                      <PauseCircle size={22} />
+                      إيقاف الحملة مؤقتاً
+                    </button>
+                  )}
+                  
+                  <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex gap-3">
+                    <AlertCircle className="text-amber-600 shrink-0" size={20} />
+                    <p className="text-xs text-amber-800 font-bold leading-relaxed">
+                      تنبيه: يتم الإرسال بمعدل رسالة كل 30-90 ثانية، مع فترة راحة 30 دقيقة كل 20 رسالة لتجنب حظر الرقم.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -454,19 +341,20 @@ export default function Dashboard() {
   );
 }
 
-function StatCard({ title, value, icon, color, borderColor, textColor }: { title: string, value: number, icon: React.ReactNode, color: string, borderColor: string, textColor: string }) {
+function StatCard({ title, value, icon, color, borderColor, textColor }: any) {
   return (
     <motion.div 
-      whileHover={{ y: -4 }}
-      className={`bg-white p-6 rounded-2xl shadow-sm border ${borderColor} flex items-center gap-6 transition-all relative overflow-hidden`}
+      whileHover={{ y: -5 }}
+      className={`${color} p-8 rounded-3xl border ${borderColor} shadow-sm transition-all`}
     >
-      <div className={`absolute -right-4 -top-4 w-24 h-24 ${color} rounded-full opacity-50 blur-2xl`}></div>
-      <div className={`w-14 h-14 ${color} rounded-xl flex items-center justify-center shadow-inner border ${borderColor} relative z-10`}>
-        {icon}
+      <div className="flex justify-between items-start mb-4">
+        <div className="p-3 bg-white rounded-2xl shadow-sm border border-slate-100">
+          {icon}
+        </div>
       </div>
-      <div className="relative z-10">
+      <div>
         <p className="text-slate-500 text-sm font-bold mb-1">{title}</p>
-        <p className={`text-3xl font-black ${textColor}`}>{value}</p>
+        <h3 className={`text-4xl font-black ${textColor}`}>{value}</h3>
       </div>
     </motion.div>
   );
