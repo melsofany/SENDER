@@ -32,11 +32,19 @@ export class WhatsAppCloudAPI {
     let cleanPhone = phone.replace(/[^0-9]/g, '');
 
     // Handle Egyptian numbers (country code: +20)
-    if (cleanPhone.startsWith('0')) {
-      // Replace leading 0 with Egypt country code 20
-      cleanPhone = '20' + cleanPhone.substring(1);
-    } else if (!cleanPhone.startsWith('20') && cleanPhone.length === 10) {
-      // Assume it's an Egyptian number without leading 0
+    if (cleanPhone.startsWith('01') && cleanPhone.length === 11) {
+      // Egyptian mobile number starting with 01...
+      cleanPhone = '2' + cleanPhone;
+    } else if (cleanPhone.startsWith('0') && cleanPhone.length === 10) {
+      // Possible South African or other 10-digit number starting with 0
+      // Default to Egypt for this specific project context if it's 01...
+      if (cleanPhone.startsWith('1')) {
+         cleanPhone = '20' + cleanPhone;
+      } else {
+         // Other cases, keep as is but add + later
+      }
+    } else if (cleanPhone.length === 10 && !cleanPhone.startsWith('0')) {
+      // 10 digits without leading 0, assume Egypt mobile
       cleanPhone = '20' + cleanPhone;
     }
 
@@ -74,6 +82,8 @@ export class WhatsAppCloudAPI {
       to: formattedPhone,
       text: messageText,
     };
+
+    console.log(`Attempting to send message to ${formattedPhone}`);
 
     try {
       const response = await fetch(url, {
